@@ -1,0 +1,10 @@
+/build/
+/logs/
+/initramfs.cpio
+/initramfs.cpio.gz
+/host-tools/
+/.overlay/
+/.ovtest/
+/share/kselftest/
+/share/results/*
+!/share/results/.gitkeep

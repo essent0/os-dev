@@ -1,0 +1,8 @@
+#!/bin/sh
+uname -a
+echo "---- /proc/version ----"
+cat /proc/version
+echo "---- uptime ----"
+cat /proc/uptime
+echo "---- meminfo ----"
+sed -n '1,6p' /proc/meminfo

@@ -1,0 +1,50 @@
+# Merged onto x86_64_defconfig and kernel/configs/kvm_guest.config.
+# Edit this, then run ./configure.sh --reconfig
+# A one-file rebuild after that is just ./build.sh
+
+CONFIG_LOCALVERSION="-lidev"
+
+# Guest userspace is an initramfs with a shell script as /init.
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_RD_GZIP=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_TMPFS=y
+CONFIG_BINFMT_ELF=y
+CONFIG_BINFMT_SCRIPT=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+
+# Serial console. QEMU's stdio is ttyS0.
+CONFIG_PRINTK=y
+CONFIG_PRINTK_TIME=y
+CONFIG_EARLY_PRINTK=y
+CONFIG_TTY=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_MAGIC_SYSRQ=y
+CONFIG_ACPI=y
+CONFIG_PANIC_TIMEOUT=1
+
+# compile/share is passed in as a virtio-9p mount.
+CONFIG_NET=y
+CONFIG_INET=y
+CONFIG_PCI=y
+CONFIG_VIRTIO=y
+CONFIG_VIRTIO_PCI=y
+CONFIG_VIRTIO_BLK=y
+CONFIG_NET_9P=y
+CONFIG_NET_9P_VIRTIO=y
+CONFIG_NETWORK_FILESYSTEMS=y
+CONFIG_9P_FS=y
+
+# /proc/config.gz inside the guest.
+CONFIG_IKCONFIG=y
+CONFIG_IKCONFIG_PROC=y
+
+# Debug info dominates incremental link time. Turn a DWARF choice
+# back on when you want addr2line or gdb against vmlinux.
+CONFIG_DEBUG_INFO_NONE=y
+# CONFIG_DEBUG_INFO is not set
+# CONFIG_DEBUG_INFO_BTF is not set
+# CONFIG_DEBUG_INFO_BTF_MODULES is not set

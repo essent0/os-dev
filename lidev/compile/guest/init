@@ -1,0 +1,159 @@
+#!/bin/sh
+# PID 1 for the initramfs. BusyBox is /bin/sh.
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+set -f
+
+echo "LIDEV_INIT"
+
+mark() {
+	# /dev/kmsg writes are one record, so a printk cannot split the line.
+	printf '%s\n' "$1"
+	printf '%s\n' "$1" >/dev/kmsg 2>/dev/null || true
+}
+
+mount -t proc proc /proc || {
+	echo "LIDEV_MOUNT_FAIL proc"
+	exec reboot -f
+}
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+mkdir -p /dev/pts /tmp /host /usr
+mount -t devpts devpts /dev/pts 2>/dev/null || true
+mount -t tmpfs tmpfs /tmp
+echo 1 > /proc/sys/kernel/sysrq 2>/dev/null || true
+
+CMDLINE=$(cat /proc/cmdline)
+
+has_flag() {
+	for tok in $CMDLINE; do
+		case $tok in
+		"$1"|"$1"=*) return 0 ;;
+		esac
+	done
+	return 1
+}
+
+arg() {
+	key="$1="
+	for tok in $CMDLINE; do
+		case $tok in
+		"$key"*)
+			printf '%s\n' "${tok#"$key"}"
+			return 0
+			;;
+		esac
+	done
+}
+
+mount_9p() {
+	tag=$1
+	mnt=$2
+	extra=$3
+	base="trans=virtio,msize=262144"
+	if [ -n "$extra" ]; then
+		base="$base,$extra"
+	fi
+	if mount -t 9p -o "$base,version=9p2000.L" "$tag" "$mnt" 2>/tmp/9p.err; then
+		return 0
+	fi
+	if mount -t 9p -o "$base" "$tag" "$mnt" 2>>/tmp/9p.err; then
+		return 0
+	fi
+	echo "LIDEV_9P $tag=fail"
+	cat /tmp/9p.err
+	return 1
+}
+
+if mount_9p hostshare /host ""; then
+	mark "LIDEV_9P hostshare=ok"
+	mkdir -p /host/results
+else
+	true
+fi
+
+mark "LIDEV_BOOT kernel=$(uname -r) arch=$(uname -m)"
+
+power_off() {
+	mark "LIDEV_POWEROFF status=$1"
+	sync
+	poweroff -f
+	echo o >/proc/sysrq-trigger
+	reboot -f
+	while true; do
+		sleep 3600
+	done
+}
+
+if has_flag lidev.shell; then
+	mark "LIDEV_SHELL type poweroff -f to leave"
+	/bin/sh
+	power_off $?
+fi
+
+run_one() {
+	name=$1
+	script=""
+	if [ -f "/host/experiments/$name" ]; then
+		script="/host/experiments/$name"
+	elif [ -f "/experiments/$name" ]; then
+		script="/experiments/$name"
+	else
+		mark "LIDEV_BEGIN $name"
+		echo "no experiment named $name"
+		mark "LIDEV_END $name status=127"
+		return 127
+	fi
+	mark "LIDEV_BEGIN $name"
+	chmod +x "$script" 2>/dev/null || true
+	# Scripts use the shebang. ELF experiments are executed directly.
+	"$script"
+	st=$?
+	mark "LIDEV_END $name status=$st"
+	return "$st"
+}
+
+status=0
+
+if has_flag lidev.kselftest; then
+	mark "LIDEV_BEGIN kselftest"
+	if mount_9p hostusr /usr "ro"; then
+		echo "LIDEV_9P hostusr=ok"
+		if [ -x /usr/bin/bash ]; then
+			ln -sf /usr/bin/bash /bin/bash
+		fi
+		if [ -f /host/kselftest/run_kselftest.sh ]; then
+			cd /host/kselftest
+			/bin/sh ./run_kselftest.sh
+			status=$?
+		else
+			echo "missing /host/kselftest. On the host run ./kselftest.sh build"
+			status=1
+		fi
+	else
+		status=1
+	fi
+	mark "LIDEV_END kselftest status=$status"
+	power_off "$status"
+fi
+
+exp=$(arg lidev.exp)
+if [ -z "$exp" ]; then
+	exp=hello
+fi
+
+rest=$exp
+while [ -n "$rest" ]; do
+	case "$rest" in
+	*,*)
+		one=${rest%%,*}
+		rest=${rest#*,}
+		;;
+	*)
+		one=$rest
+		rest=""
+		;;
+	esac
+	run_one "$one" || status=1
+done
+
+power_off "$status"
