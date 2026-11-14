@@ -1,0 +1,12 @@
+[submodule "lidev/linux"]
+	path = lidev/linux
+	url = https://github.com/essent0/linux.git
+[submodule "qemudev/qemu"]
+	path = qemudev/qemu
+	url = https://github.com/essent0/qemu.git
+[submodule "rtosdev/FreeRTOS-Kernel"]
+	path = rtosdev/FreeRTOS-Kernel
+	url = https://github.com/essent0/FreeRTOS-Kernel.git
+[submodule "udev/xv6-public"]
+	path = udev/xv6-public
+	url = https://github.com/essent0/xv6-public.git
