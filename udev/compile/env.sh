@@ -5,9 +5,6 @@ COMPILE=$(cd "$(dirname "$_udev_env_self")" && pwd)
 UDEV_ROOT=$(cd "$COMPILE/.." && pwd)
 
 SRC="$UDEV_ROOT/xv6-public"
-OSDEV_ROOT=$(cd "$UDEV_ROOT/.." && pwd)
-QEMU_ARM=$OSDEV_ROOT/qemudev/compile/build/qemu-system-arm
-export QEMU_ARM
 BUILD="$COMPILE/build"
 TREE="$BUILD/tree"
 LOGS="$COMPILE/logs"
@@ -98,12 +95,12 @@ udev_copy_images() {
 # Images are the per-run copies, not the build tree.
 udev_qemu_base() {
 	local fs=$1 xv6=$2
-	if [[ ! -x $QEMU_ARM ]]; then
-		echo "local qemu-system-arm is not built. Run $OSDEV_ROOT/qemudev/compile/build.sh" >&2
+	if ! udev_have_qemu; then
+		echo "qemu-system-i386 is not available. Run $COMPILE/deps.sh" >&2
 		return 1
 	fi
 	UDEV_QEMU=(
-		"$QEMU_ARM"
+		qemu-system-i386
 		-machine "pc,accel=${ACCEL}"
 		-no-reboot
 		-nic none

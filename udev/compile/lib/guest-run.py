@@ -52,10 +52,10 @@ def main() -> int:
     ap.add_argument("--line", action="append", required=True)
     args = ap.parse_args()
 
-    qemu = os.environ.get("QEMU_ARM", "")
-    if not qemu or not os.access(qemu, os.X_OK):
+    qemu = shutil.which("qemu-system-i386")
+    if not qemu:
         print(
-            "local qemu-system-arm is not built. Run qemudev/compile/build.sh",
+            "qemu-system-i386 is not available. Run deps.sh",
             file=sys.stderr,
         )
         return 1

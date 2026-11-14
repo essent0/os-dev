@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boot build/tree xv6.img and fs.img on the local qemu-system-arm.
+# Boot build/tree xv6.img and fs.img on qemu-system-i386.
 #
 #   boot.sh                 echo a pass marker from the shell
 #   boot.sh ls              run ls, then the marker

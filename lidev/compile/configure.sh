@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# x86_64_defconfig + kvm_guest.config + config/qemu.fragment.
+# multi_v7_defconfig + config/qemu.fragment. ARCH=arm.
 # Pass --reconfig to regenerate .config from scratch.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
@@ -17,24 +17,29 @@ if [[ ! -f $SRC/Makefile ]]; then
 	exit 1
 fi
 
-mkdir -p "$BUILD"
-
-if [[ -f $BUILD/.config && $reconfig -eq 0 ]]; then
+if [[ -f $BUILD/.config && $reconfig -eq 0 ]] && grep -q '^CONFIG_ARM=y$' "$BUILD/.config"; then
 	echo "keeping $BUILD/.config"
 	echo "run configure.sh --reconfig to apply config/qemu.fragment again"
 	exit 0
 fi
 
+if [[ -d $BUILD ]]; then
+	echo "removing $BUILD so the ARM config does not reuse another architecture"
+	rm -rf "$BUILD"
+fi
+mkdir -p "$BUILD"
+
 echo "writing $BUILD/.config"
-lidev_run make -C "$SRC" O="$BUILD" x86_64_defconfig
-lidev_run make -C "$SRC" O="$BUILD" kvm_guest.config
+lidev_run make -C "$SRC" O="$BUILD" ARCH="$ARCH" CROSS_COMPILE="$CROSS_COMPILE" multi_v7_defconfig
 "$SRC/scripts/kconfig/merge_config.sh" -m -O "$BUILD" \
 	"$BUILD/.config" "$FRAGMENT"
-lidev_run make -C "$SRC" O="$BUILD" olddefconfig
+lidev_run make -C "$SRC" O="$BUILD" ARCH="$ARCH" CROSS_COMPILE="$CROSS_COMPILE" olddefconfig
 
 missing=0
 for sym in \
-	CONFIG_SERIAL_8250_CONSOLE \
+	CONFIG_ARM \
+	CONFIG_ARCH_VIRT \
+	CONFIG_SERIAL_AMBA_PL011_CONSOLE \
 	CONFIG_BLK_DEV_INITRD \
 	CONFIG_RD_GZIP \
 	CONFIG_DEVTMPFS \
@@ -47,8 +52,7 @@ for sym in \
 	CONFIG_MAGIC_SYSRQ \
 	CONFIG_TMPFS \
 	CONFIG_PROC_FS \
-	CONFIG_SYSFS \
-	CONFIG_ACPI
+	CONFIG_SYSFS
 do
 	if ! grep -q "^${sym}=y$" "$BUILD/.config"; then
 		echo "config is missing ${sym}=y" >&2

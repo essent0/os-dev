@@ -26,7 +26,7 @@ build)
 		echo "missing $src" >&2
 		exit 1
 	fi
-	gcc -static -O2 -Wall -Wextra -o "$SHARE/experiments/$name" "$src"
+	lidev_run "${CROSS_COMPILE}gcc" -static -O2 -Wall -Wextra -o "$SHARE/experiments/$name" "$src"
 	shift
 	;;
 esac

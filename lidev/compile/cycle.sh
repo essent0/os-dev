@@ -14,9 +14,9 @@ usage() {
 
 Scripts, in the order a change usually takes:
 
-  deps.sh          flex, bison, libelf, qemu
-  configure.sh     x86_64_defconfig + kvm guest + config/qemu.fragment
-  build.sh         incremental make, default target bzImage
+  deps.sh          flex, bison, libelf, arm-linux-gnueabihf-gcc
+  configure.sh     multi_v7_defconfig + config/qemu.fragment
+  build.sh         incremental make, default target zImage
   initramfs.sh     busybox initramfs
   boot.sh          qemu. boot.sh shell drops to a serial shell
   experiment.sh    boot one program from share/experiments

@@ -4,7 +4,7 @@
 #   build.sh            configure if needed, then compile
 #   build.sh clean      delete compile/build
 #
-# The source tree is left on branch dummy at tag v9.2.0.
+# The source tree stays at the v9.2.0 commit.
 # This script does not check out, switch, or retag anything.
 # Only the arm system emulator is built.
 set -euo pipefail
@@ -29,16 +29,17 @@ if [[ ${1:-} == clean ]]; then
 	exit 0
 fi
 
-if [[ ! -d $SRC/.git ]]; then
+if ! git -C "$SRC" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 	echo "qemu source is missing at $SRC" >&2
 	exit 1
 fi
 
-branch=$(git -C "$SRC" symbolic-ref --short HEAD)
-desc=$(git -C "$SRC" describe --tags --exact-match HEAD 2>/dev/null || true)
-if [[ $branch != dummy || $desc != v9.2.0 ]]; then
-	echo "qemu is branch ${branch} at ${desc:-unknown}; expected dummy at v9.2.0" >&2
-	echo "build.sh does not switch branches. Stay on dummy at v9.2.0." >&2
+# v9.2.0. A submodule checkout is detached here, so the tag ref is not required.
+expected=ae35f033b874c627d81d51070187fbf55f0bf1a7
+head=$(git -C "$SRC" rev-parse HEAD)
+if [[ $head != "$expected" ]]; then
+	echo "qemu is $head; expected v9.2.0 ($expected)" >&2
+	echo "build.sh does not switch branches. Stay on v9.2.0." >&2
 	exit 1
 fi
 

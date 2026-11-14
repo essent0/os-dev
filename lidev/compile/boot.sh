@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boot compile/build's bzImage with the local qemu-system-arm and the initramfs.
+# Boot compile/build's zImage on the local qemu-system-arm (virt, cortex-a15).
 #
 #   boot.sh                 run the hello experiment
 #   boot.sh NAME            run share/experiments/NAME (commas allowed)
@@ -25,9 +25,9 @@ kselftest) mode=kselftest ;;
 *) exp=$1 ;;
 esac
 
-image=$BUILD/arch/x86/boot/bzImage
+image=$BUILD/arch/arm/boot/zImage
 if [[ ! -f $image ]]; then
-	echo "no bzImage at $image; run build.sh first" >&2
+	echo "no zImage at $image; run build.sh first" >&2
 	exit 1
 fi
 if [[ ! -f $INITRAMFS ]]; then
@@ -45,19 +45,16 @@ rundir=$LOGS/$stamp
 mkdir -p "$rundir" "$SHARE" "$SHARE/results"
 ln -sfn "$rundir" "$LOGS/latest"
 
-append="console=ttyS0,115200 earlyprintk=serial,ttyS0,115200 nokaslr loglevel=7 panic=1 rdinit=/init"
+append="console=ttyAMA0,115200 earlycon loglevel=7 panic=1 rdinit=/init"
 case $mode in
 shell) append+=" lidev.shell=1" ;;
 kselftest) append+=" lidev.kselftest=1" ;;
 exp) append+=" lidev.exp=${exp}" ;;
 esac
 
+# This host is not an ARM machine. qemu-system-arm emulates the guest.
 accel=tcg
-cpu=max
-if [[ -r /dev/kvm && -w /dev/kvm ]]; then
-	accel=kvm
-	cpu=host
-fi
+cpu=cortex-a15
 
 if [[ $mode == kselftest ]]; then
 	: "${TIMEOUT:=600}"
@@ -68,9 +65,17 @@ if [[ $accel == tcg && $TIMEOUT -lt 600 ]]; then
 	TIMEOUT=600
 fi
 
-fs=(-virtfs "local,path=${SHARE},mount_tag=hostshare,security_model=mapped-file,id=hostshare")
+# virtio-mmio. The virt machine's PCI ECAM sits above 4G, and this
+# 32-bit kernel does not bring that host bridge up.
+fs=(
+	-fsdev "local,id=hostshare,path=${SHARE},security_model=mapped-file"
+	-device "virtio-9p-device,fsdev=hostshare,mount_tag=hostshare"
+)
 if [[ $mode == kselftest ]]; then
-	fs+=(-virtfs "local,path=/usr,mount_tag=hostusr,security_model=none,id=hostusr")
+	fs+=(
+		-fsdev "local,id=hostusr,path=/usr,security_model=none,readonly=on"
+		-device "virtio-9p-device,fsdev=hostusr,mount_tag=hostusr"
+	)
 fi
 
 extra=()
@@ -79,7 +84,7 @@ if [[ -n ${QEMU_EXTRA:-} ]]; then
 fi
 
 cmd=(
-	-machine "pc,accel=${accel}"
+	-machine "virt,accel=${accel}"
 	-cpu "$cpu"
 	-m "$MEM"
 	-smp "$SMP"

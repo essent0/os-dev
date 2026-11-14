@@ -17,7 +17,7 @@ After you edit a file under `../linux`:
 ./boot.sh shell
 ```
 
-`./build.sh` is an incremental compile. It produces `build/arch/x86/boot/bzImage`. The second run is much faster than the first.
+`./build.sh` is an incremental compile. It produces `build/arch/arm/boot/zImage`. The second run is much faster than the first.
 
 `./boot.sh shell` boots that image in QEMU and leaves you at a root shell on the serial console. The shell is BusyBox. `poweroff -f` shuts the VM down and gives you the host prompt back. Exiting the shell does the same.
 
@@ -40,7 +40,7 @@ ls /host/experiments
 
 ### deps.sh
 
-Checks for flex, bison, libelf headers, and qemu. If `sudo` works, it installs them. Otherwise it unpacks those packages under this directory and the other scripts find them. You already ran this once. Run it again only if a tool goes missing.
+Checks for flex, bison, libelf headers, and `arm-linux-gnueabihf-gcc`. If `sudo` works, it installs them. Otherwise it unpacks those packages under this directory and the other scripts find them. The emulator is `qemudev`'s `qemu-system-arm`. Run this again only if a tool goes missing.
 
 ### configure.sh
 
@@ -51,16 +51,16 @@ Writes `build/.config`.
 ./configure.sh --reconfig # rebuild the config from scratch
 ```
 
-The config is `x86_64_defconfig`, plus the kernel's `kvm_guest.config`, plus `config/qemu.fragment`. Edit the fragment when you want a kernel option, then `--reconfig`, then `./build.sh`.
+The config is `multi_v7_defconfig` plus `config/qemu.fragment`, built with `ARCH=arm`. Edit the fragment when you want a kernel option, then `--reconfig`, then `./build.sh`.
 
 ### build.sh
 
 Compiles the kernel into `build/`.
 
 ```bash
-./build.sh                # bzImage
+./build.sh                # zImage
 ./build.sh vmlinux        # stop after vmlinux
-./build.sh -j8 bzImage    # extra make arguments are passed through
+./build.sh -j8 zImage     # extra make arguments are passed through
 ```
 
 `vmlinux` (for gdb or addr2line) is `build/vmlinux`. Debug info is off. Turn it on in `config/qemu.fragment` if you need it.
@@ -71,7 +71,7 @@ Packs BusyBox and `guest/init` into `initramfs.cpio.gz`. The image is already bu
 
 ### boot.sh
 
-Boots `build/arch/x86/boot/bzImage` in QEMU.
+Boots `build/arch/arm/boot/zImage` on `qemu-system-arm` (`virt`, Cortex-A15).
 
 ```bash
 ./boot.sh shell           # stay in Linux until you power off
@@ -101,7 +101,7 @@ Same boot as `boot.sh`, then a short pass/fail summary.
 
 ### kselftest.sh
 
-Builds kernel selftests and runs them inside the guest, against this bzImage.
+Builds kernel selftests and runs them inside the guest, against this zImage.
 
 ```bash
 ./kselftest.sh            # default: size and proc
@@ -146,7 +146,7 @@ Runs the whole loop: deps, configure if needed, build, initramfs, one experiment
 | `share/kselftest/` | Installed selftests. |
 | `share/results/` | For anything the guest writes back to the host. |
 | `logs/` | One directory per boot. `logs/latest` is the newest. |
-| `build/` | Kernel build tree. `bzImage` is `build/arch/x86/boot/bzImage`. |
+| `build/` | Kernel build tree. `zImage` is `build/arch/arm/boot/zImage`. |
 | `env.sh`, `lib/` | Shared helpers. The scripts source these. Don't run them yourself. |
 
 ## Knobs
